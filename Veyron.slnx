@@ -6,6 +6,6 @@
     <Project Path="src/Veyron.Network/Veyron.Network.csproj" />
   </Folder>
   <Folder Name="/Элементы решения/">
-    <File Path="index.html" />
+    <File Path="../../../Downloads/index.html" />
   </Folder>
 </Solution>

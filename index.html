@@ -1,1366 +1,280 @@
-﻿```html
 <!DOCTYPE html>
 <html lang="ru">
-	<head>
-		<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<meta name="theme-color" content="#090810">
-
-					<meta name="description" content="Veyron — приложение для управления прокси-подключениями, профилями и маршрутизацией сетевого трафика.">
-						<meta name="keywords" content="Veyron, proxy, HTTP Proxy, SOCKS5, network manager">
-							<meta name="author" content="Veyron">
-
-								<title>Veyron — Your connection. Your control.</title>
-
-								<link rel="preconnect" href="https://fonts.googleapis.com">
-									<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-
-										<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-											<style>
-												:root {
-												--bg: #090810;
-												--bg-secondary: #0e0c17;
-												--surface: #13111e;
-												--surface-light: #191625;
-
-												--primary: #9565ff;
-												--primary-light: #b69aff;
-												--primary-dark: #6535d4;
-
-												--text: #f5f2ff;
-												--muted: #9891a8;
-												--border: #ffffff12;
-
-												--radius: 16px;
-												--container: 1160px;
-												}
-
-												* {
-												margin: 0;
-												padding: 0;
-												box-sizing: border-box;
-												}
-
-												html {
-												scroll-behavior: smooth;
-												scroll-padding-top: 90px;
-												}
-
-												body {
-												background: var(--bg);
-												color: var(--text);
-												font-family: 'DM Sans', sans-serif;
-												overflow-x: hidden;
-												}
-
-												a {
-												color: inherit;
-												text-decoration: none;
-												}
-
-												button {
-												font: inherit;
-												}
-
-												.container {
-												width: min(var(--container), calc(100% - 48px));
-												margin: 0 auto;
-												}
-
-												.ambient {
-												position: absolute;
-												width: 600px;
-												height: 600px;
-												border-radius: 50%;
-												background: #793de8;
-												filter: blur(180px);
-												opacity: .13;
-												pointer-events: none;
-												z-index: -1;
-												}
-
-												.ambient-one {
-												top: -300px;
-												left: -250px;
-												}
-
-												.ambient-two {
-												top: 500px;
-												right: -400px;
-												opacity: .09;
-												}
-
-												/* NAVIGATION */
-
-												.navbar {
-												position: fixed;
-												top: 0;
-												left: 0;
-												right: 0;
-												z-index: 100;
-												height: 76px;
-
-												display: flex;
-												align-items: center;
-
-												background: #090810c9;
-												backdrop-filter: blur(20px);
-												border-bottom: 1px solid var(--border);
-												}
-
-												.nav-inner {
-												display: flex;
-												justify-content: space-between;
-												align-items: center;
-												}
-
-												.logo {
-												display: flex;
-												align-items: center;
-												gap: 11px;
-
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 22px;
-												font-weight: 700;
-												letter-spacing: -.8px;
-												}
-
-												.logo-icon {
-												width: 35px;
-												height: 35px;
-
-												display: grid;
-												place-items: center;
-
-												border-radius: 10px;
-												background: linear-gradient(135deg, #b18aff, #6535d4);
-												box-shadow: 0 0 25px #9565ff35;
-
-												font-size: 20px;
-												}
-
-												.nav-links {
-												display: flex;
-												align-items: center;
-												gap: 34px;
-												}
-
-												.nav-links a {
-												color: var(--muted);
-												font-size: 13px;
-												transition: .2s;
-												}
-
-												.nav-links a:hover {
-												color: white;
-												}
-
-												.nav-actions {
-												display: flex;
-												align-items: center;
-												gap: 12px;
-												}
-
-												.github-link {
-												color: var(--muted);
-												font-size: 13px;
-												}
-
-												.github-link:hover {
-												color: white;
-												}
-
-												/* BUTTONS */
-
-												.button {
-												display: inline-flex;
-												align-items: center;
-												justify-content: center;
-												gap: 9px;
-
-												min-height: 45px;
-												padding: 0 20px;
-
-												border-radius: 9px;
-												border: 1px solid transparent;
-
-												font-size: 13px;
-												font-weight: 600;
-
-												transition: .25s;
-												cursor: pointer;
-												}
-
-												.button-primary {
-												color: white;
-												background: linear-gradient(135deg, #a77aff, #7545e5);
-												box-shadow: 0 5px 25px #8550ec30;
-												}
-
-												.button-primary:hover {
-												transform: translateY(-2px);
-												box-shadow: 0 9px 35px #8550ec55;
-												}
-
-												.button-secondary {
-												color: white;
-												background: #ffffff08;
-												border-color: var(--border);
-												}
-
-												.button-secondary:hover {
-												background: #ffffff12;
-												border-color: #9565ff60;
-												}
-
-												.button-small {
-												min-height: 37px;
-												padding: 0 15px;
-												font-size: 12px;
-												}
-
-												/* HERO */
-
-												.hero {
-												position: relative;
-												padding: 175px 0 105px;
-												overflow: hidden;
-												}
-
-												.hero-content {
-												text-align: center;
-												max-width: 850px;
-												margin: 0 auto;
-												}
-
-												.eyebrow {
-												display: inline-flex;
-												align-items: center;
-												gap: 9px;
-
-												padding: 8px 13px;
-												margin-bottom: 27px;
-
-												border: 1px solid #9565ff35;
-												border-radius: 30px;
-
-												background: #9565ff0c;
-												color: #c1a9ff;
-
-												font-size: 11px;
-												font-weight: 600;
-												letter-spacing: 1.5px;
-												}
-
-												.status-dot {
-												width: 7px;
-												height: 7px;
-												border-radius: 50%;
-												background: #a47aff;
-												box-shadow: 0 0 12px #a47aff;
-												}
-
-												h1, h2, h3 {
-												font-family: 'Space Grotesk', sans-serif;
-												}
-
-												.hero h1 {
-												font-size: clamp(48px, 8vw, 86px);
-												line-height: 1.04;
-												letter-spacing: -5px;
-												font-weight: 700;
-												}
-
-												.gradient-text {
-												background: linear-gradient(100deg, #ffffff, #b99aff 55%, #8050e7);
-												-webkit-background-clip: text;
-												background-clip: text;
-												color: transparent;
-												}
-
-												.hero-description {
-												max-width: 590px;
-												margin: 25px auto 32px;
-
-												color: var(--muted);
-												font-size: 16px;
-												line-height: 1.8;
-												}
-
-												.hero-actions {
-												display: flex;
-												justify-content: center;
-												flex-wrap: wrap;
-												gap: 12px;
-												}
-
-												.hero-note {
-												margin-top: 17px;
-												color: #777184;
-												font-size: 11px;
-												}
-
-												/* APP PREVIEW */
-
-												.preview-section {
-												padding: 0 0 115px;
-												}
-
-												.app-window {
-												position: relative;
-												max-width: 950px;
-												margin: 0 auto;
-
-												border: 1px solid #ffffff20;
-												border-radius: 15px;
-
-												background: #100e19;
-												box-shadow:
-												0 30px 100px #00000070,
-												0 0 80px #8652ed12;
-
-												overflow: hidden;
-												}
-
-												.window-header {
-												height: 43px;
-												padding: 0 17px;
-
-												display: flex;
-												align-items: center;
-												justify-content: space-between;
-
-												background: #151321;
-												border-bottom: 1px solid var(--border);
-												}
-
-												.window-dots {
-												display: flex;
-												gap: 6px;
-												}
-
-												.window-dots span {
-												width: 8px;
-												height: 8px;
-												border-radius: 50%;
-												background: #51495f;
-												}
-
-												.window-title {
-												color: #aaa2b9;
-												font-size: 11px;
-												}
-
-												.window-body {
-												display: grid;
-												grid-template-columns: 190px 1fr;
-												min-height: 380px;
-												}
-
-												.sidebar {
-												padding: 20px 12px;
-												background: #13111d;
-												border-right: 1px solid var(--border);
-												}
-
-												.sidebar-logo {
-												padding: 0 9px 23px;
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 17px;
-												font-weight: 700;
-												}
-
-												.sidebar-item {
-												padding: 11px 12px;
-												margin-bottom: 5px;
-
-												border-radius: 7px;
-												color: #9991aa;
-												font-size: 12px;
-												}
-
-												.sidebar-item.active {
-												color: white;
-												background: #9565ff20;
-												border: 1px solid #9565ff25;
-												}
-
-												.app-content {
-												padding: 27px;
-												}
-
-												.app-heading {
-												display: flex;
-												justify-content: space-between;
-												align-items: center;
-												margin-bottom: 25px;
-												}
-
-												.app-heading h3 {
-												font-size: 20px;
-												}
-
-												.demo-label {
-												color: #a98bff;
-												font-size: 10px;
-												letter-spacing: 1px;
-												}
-
-												.connection-card {
-												display: flex;
-												justify-content: space-between;
-												align-items: center;
-												gap: 15px;
-
-												padding: 20px;
-												margin-bottom: 17px;
-
-												background: linear-gradient(120deg, #201832, #171321);
-												border: 1px solid #9565ff35;
-												border-radius: 11px;
-												}
-
-												.connection-info {
-												display: flex;
-												align-items: center;
-												gap: 13px;
-												}
-
-												.country-icon {
-												width: 40px;
-												height: 40px;
-												display: grid;
-												place-items: center;
-
-												border-radius: 9px;
-												background: #9565ff20;
-												font-size: 20px;
-												}
-
-												.connection-info strong {
-												display: block;
-												margin-bottom: 4px;
-												font-size: 13px;
-												}
-
-												.connection-info span {
-												color: var(--muted);
-												font-size: 10px;
-												}
-
-												.connection-status {
-												padding: 7px 10px;
-												border: 1px solid #ffffff15;
-												border-radius: 6px;
-												color: #c3b8d8;
-												font-size: 10px;
-												}
-
-												.stats-grid {
-												display: grid;
-												grid-template-columns: repeat(3, 1fr);
-												gap: 12px;
-												}
-
-												.stat-card {
-												padding: 17px;
-												background: #ffffff05;
-												border: 1px solid var(--border);
-												border-radius: 9px;
-												}
-
-												.stat-card span {
-												display: block;
-												margin-bottom: 10px;
-												color: var(--muted);
-												font-size: 10px;
-												}
-
-												.stat-card strong {
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 20px;
-												}
-
-												.app-footer {
-												display: flex;
-												justify-content: space-between;
-												gap: 12px;
-
-												padding: 17px 0 0;
-												color: #777184;
-												font-size: 10px;
-												}
-
-												/* SECTION COMMON */
-
-												.section {
-												padding: 100px 0;
-												}
-
-												.section-heading {
-												max-width: 650px;
-												margin: 0 auto 50px;
-												text-align: center;
-												}
-
-												.section-label {
-												margin-bottom: 15px;
-												color: #aa88ff;
-												font-size: 11px;
-												font-weight: 600;
-												letter-spacing: 2px;
-												}
-
-												.section-heading h2 {
-												font-size: clamp(32px, 5vw, 48px);
-												letter-spacing: -2px;
-												}
-
-												.section-heading p {
-												margin-top: 15px;
-												color: var(--muted);
-												font-size: 14px;
-												line-height: 1.8;
-												}
-
-												/* FEATURES */
-
-												.features-grid {
-												display: grid;
-												grid-template-columns: repeat(3, 1fr);
-												gap: 15px;
-												}
-
-												.feature-card {
-												min-height: 205px;
-												padding: 25px;
-
-												border: 1px solid var(--border);
-												border-radius: var(--radius);
-
-												background: linear-gradient(145deg, #171421, #100e18);
-												transition: .3s;
-												}
-
-												.feature-card:hover {
-												transform: translateY(-5px);
-												border-color: #9565ff55;
-												background: linear-gradient(145deg, #201832, #100e18);
-												}
-
-												.feature-icon {
-												width: 42px;
-												height: 42px;
-												display: grid;
-												place-items: center;
-
-												margin-bottom: 22px;
-
-												border-radius: 10px;
-												background: #9565ff18;
-												color: #b99aff;
-												font-size: 19px;
-												}
-
-												.feature-card h3 {
-												margin-bottom: 10px;
-												font-size: 17px;
-												}
-
-												.feature-card p {
-												color: var(--muted);
-												font-size: 12px;
-												line-height: 1.8;
-												}
-
-												/* PROTOCOLS */
-
-												.protocol-section {
-												background: linear-gradient(180deg, transparent, #120e1d, transparent);
-												}
-
-												.protocols {
-												display: flex;
-												justify-content: center;
-												flex-wrap: wrap;
-												gap: 13px;
-												}
-
-												.protocol {
-												min-width: 155px;
-												padding: 18px 23px;
-
-												text-align: center;
-												border: 1px solid var(--border);
-												border-radius: 10px;
-												background: #ffffff05;
-												}
-
-												.protocol strong {
-												display: block;
-												margin-bottom: 5px;
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 16px;
-												}
-
-												.protocol span {
-												color: var(--muted);
-												font-size: 10px;
-												}
-
-												.protocol-note {
-												margin-top: 25px;
-												color: #777184;
-												text-align: center;
-												font-size: 11px;
-												}
-
-												/* DOWNLOAD */
-
-												.download-section {
-												padding: 100px 0;
-												}
-
-												.download-card {
-												position: relative;
-												display: grid;
-												grid-template-columns: 1.3fr .7fr;
-												align-items: center;
-												gap: 40px;
-
-												padding: 48px;
-												overflow: hidden;
-
-												border: 1px solid #9565ff45;
-												border-radius: 20px;
-
-												background:
-												radial-gradient(circle at 85% 50%, #7945ec30, transparent 40%),
-												linear-gradient(135deg, #171324, #100f19);
-												}
-
-												.download-info h2 {
-												margin: 15px 0;
-												font-size: 38px;
-												letter-spacing: -2px;
-												}
-
-												.download-info h2 span {
-												color: #aa85ff;
-												font-size: .55em;
-												vertical-align: middle;
-												}
-
-												.download-info p {
-												max-width: 480px;
-												color: var(--muted);
-												font-size: 13px;
-												line-height: 1.8;
-												}
-
-												.download-meta {
-												display: flex;
-												flex-wrap: wrap;
-												gap: 9px;
-												margin: 22px 0 27px;
-												}
-
-												.download-meta span {
-												padding: 7px 12px;
-												border: 1px solid var(--border);
-												border-radius: 7px;
-												color: #c4bdd3;
-												font-size: 10px;
-												}
-
-												.download-actions {
-												display: flex;
-												flex-wrap: wrap;
-												gap: 12px;
-												}
-
-												.download-visual {
-												min-height: 240px;
-
-												display: flex;
-												flex-direction: column;
-												justify-content: center;
-												align-items: center;
-
-												border: 1px solid #ffffff12;
-												border-radius: 16px;
-												background: #ffffff05;
-												}
-
-												.download-logo {
-												width: 75px;
-												height: 75px;
-
-												display: grid;
-												place-items: center;
-
-												border-radius: 21px;
-												background: linear-gradient(135deg, #ad83ff, #6535d4);
-												box-shadow: 0 0 55px #8652ed55;
-
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 43px;
-												font-weight: 700;
-												}
-
-												.download-version {
-												margin-top: 19px;
-												color: #a99bbd;
-												font-size: 10px;
-												letter-spacing: 3px;
-												}
-
-												.download-version-number {
-												margin-top: 5px;
-												font-family: 'Space Grotesk', sans-serif;
-												font-size: 27px;
-												font-weight: 700;
-												}
-
-												.download-line {
-												width: 75px;
-												height: 2px;
-												margin: 14px 0;
-												background: linear-gradient(90deg, transparent, #9665ff, transparent);
-												}
-
-												.download-caption {
-												color: #777184;
-												font-size: 8px;
-												letter-spacing: 2px;
-												}
-
-												/* FOOTER */
-
-												footer {
-												padding: 35px 0;
-												border-top: 1px solid var(--border);
-												background: #0b0912;
-												}
-
-												.footer-inner {
-												display: flex;
-												justify-content: space-between;
-												align-items: center;
-												gap: 20px;
-												}
-
-												.footer-copy {
-												color: #777184;
-												font-size: 11px;
-												}
-
-												.footer-links {
-												display: flex;
-												gap: 23px;
-												}
-
-												.footer-links a {
-												color: var(--muted);
-												font-size: 11px;
-												transition: .2s;
-												}
-
-												.footer-links a:hover {
-												color: white;
-												}
-
-												/* ANIMATIONS */
-
-												.reveal {
-												opacity: 0;
-												transform: translateY(25px);
-												transition: opacity .7s ease, transform .7s ease;
-												}
-
-												.reveal.visible {
-												opacity: 1;
-												transform: translateY(0);
-												}
-
-												/* RESPONSIVE */
-
-												@media(max-width: 850px) {
-												.nav-links {
-												gap: 17px;
-												}
-
-												.nav-links a {
-												font-size: 12px;
-												}
-
-												.features-grid {
-												grid-template-columns: repeat(2, 1fr);
-												}
-
-												.download-card {
-												grid-template-columns: 1fr;
-												}
-
-												.download-visual {
-												min-height: 200px;
-												}
-												}
-
-												@media(max-width: 650px) {
-												.container {
-												width: calc(100% - 32px);
-												}
-
-												.navbar {
-												height: 65px;
-												}
-
-												.nav-links {
-												display: none;
-												}
-
-												.hero {
-												padding: 140px 0 75px;
-												}
-
-												.hero h1 {
-												letter-spacing: -3px;
-												}
-
-												.hero-description {
-												font-size: 14px;
-												}
-
-												.window-body {
-												grid-template-columns: 1fr;
-												}
-
-												.sidebar {
-												display: none;
-												}
-
-												.app-content {
-												padding: 17px;
-												}
-
-												.stats-grid {
-												grid-template-columns: 1fr;
-												}
-
-												.connection-card {
-												align-items: flex-start;
-												flex-direction: column;
-												}
-
-												.app-footer {
-												flex-direction: column;
-												}
-
-												.features-grid {
-												grid-template-columns: 1fr;
-												}
-
-												.section {
-												padding: 75px 0;
-												}
-
-												.download-card {
-												padding: 25px;
-												}
-
-												.download-info h2 {
-												font-size: 32px;
-												}
-
-												.download-actions {
-												flex-direction: column;
-												}
-
-												.download-actions .button {
-												width: 100%;
-												}
-
-												.footer-inner {
-												flex-direction: column;
-												text-align: center;
-												}
-
-												.footer-links {
-												flex-wrap: wrap;
-												justify-content: center;
-												}
-												}
-
-												@media(prefers-reduced-motion: reduce) {
-												*,
-												*::before,
-												*::after {
-												scroll-behavior: auto !important;
-												animation-duration: .01ms !important;
-												transition-duration: .01ms !important;
-												}
-
-												.reveal {
-												opacity: 1;
-												transform: none;
-												}
-												}
-											</style>
-										</head>
-
-	<body>
-
-		<div class="ambient ambient-one"></div>
-		<div class="ambient ambient-two"></div>
-
-		<!-- NAVIGATION -->
-
-		<header class="navbar">
-			<div class="container nav-inner">
-
-				<a href="#" class="logo">
-					<span class="logo-icon">V</span>
-					Veyron
-				</a>
-
-				<nav class="nav-links">
-					<a href="#features">Возможности</a>
-					<a href="#protocols">Протоколы</a>
-					<a href="#download">Скачать</a>
-				</nav>
-
-				<div class="nav-actions">
-					<a class="github-link"
-					   href="https://github.com/KyRoNiX23/Veyron"
-					   target="_blank"
-					   rel="noopener">
-						GitHub ↗
-					</a>
-
-					<a class="button button-primary button-small"
-					   href="#download">
-						Скачать
-					</a>
-				</div>
-
-			</div>
-		</header>
-
-		<main>
-
-			<!-- HERO -->
-
-			<section class="hero">
-				<div class="container">
-
-					<div class="hero-content reveal">
-
-						<div class="eyebrow">
-							<span class="status-dot"></span>
-							NETWORK MANAGEMENT PLATFORM
-						</div>
-
-						<h1>
-							Your connection.<br>
-								<span class="gradient-text">Your control.</span>
-							</h1>
-
-						<p class="hero-description">
-							Veyron — приложение для управления сетевыми подключениями.
-							Создавайте профили, настраивайте прокси и контролируйте
-							маршрутизацию трафика в одном интерфейсе.
-						</p>
-
-						<div class="hero-actions">
-
-							<a class="button button-primary"
-							   href="https://github.com/KyRoNiX23/Veyron/releases/download/0.1.0/Veyron.Client.zip">
-								↓ Скачать Veyron
-							</a>
-
-							<a class="button button-secondary"
-							   href="https://github.com/KyRoNiX23/Veyron"
-							   target="_blank"
-							   rel="noopener">
-								Посмотреть GitHub ↗
-							</a>
-
-						</div>
-
-						<p class="hero-note">
-							Windows · Open Source · MIT License
-						</p>
-
-					</div>
-
-				</div>
-			</section>
-
-			<!-- APP PREVIEW -->
-
-			<section class="preview-section">
-				<div class="container">
-
-					<div class="app-window reveal">
-
-						<div class="window-header">
-							<div class="window-dots">
-								<span></span>
-								<span></span>
-								<span></span>
-							</div>
-
-							<div class="window-title">Veyron Client</div>
-							<div class="window-title">Demo Interface</div>
-						</div>
-
-						<div class="window-body">
-
-							<aside class="sidebar">
-
-								<div class="sidebar-logo">Veyron</div>
-
-								<div class="sidebar-item active">
-									◈ Обзор
-								</div>
-
-								<div class="sidebar-item">
-									◉ Профили
-								</div>
-
-								<div class="sidebar-item">
-									⇄ Маршрутизация
-								</div>
-
-								<div class="sidebar-item">
-									◷ Диагностика
-								</div>
-
-								<div class="sidebar-item">
-									⚙ Настройки
-								</div>
-
-							</aside>
-
-							<div class="app-content">
-
-								<div class="app-heading">
-									<h3>Обзор</h3>
-									<span class="demo-label">DEMO PREVIEW</span>
-								</div>
-
-								<div class="connection-card">
-
-									<div class="connection-info">
-
-										<div class="country-icon">🌐</div>
-
-										<div>
-											<strong>Example Proxy</strong>
-											<span>example.com:8080 · HTTP</span>
-										</div>
-
-									</div>
-
-									<div class="connection-status">
-										Пример профиля
-									</div>
-
-								</div>
-
-								<div class="stats-grid">
-
-									<div class="stat-card">
-										<span>Тип подключения</span>
-										<strong>HTTP</strong>
-									</div>
-
-									<div class="stat-card">
-										<span>Профили</span>
-										<strong>03</strong>
-									</div>
-
-									<div class="stat-card">
-										<span>Маршрутизация</span>
-										<strong>Rules</strong>
-									</div>
-
-								</div>
-
-								<div class="app-footer">
-									<span>Veyron Client</span>
-									<span>Демонстрационные данные интерфейса</span>
-								</div>
-
-							</div>
-
-						</div>
-
-					</div>
-
-				</div>
-			</section>
-
-			<!-- FEATURES -->
-
-			<section class="section" id="features">
-				<div class="container">
-
-					<div class="section-heading reveal">
-
-						<div class="section-label">CAPABILITIES</div>
-
-						<h2>
-							Всё необходимое.<br>
-								<span class="gradient-text">В одном приложении.</span>
-							</h2>
-
-						<p>
-							Управление подключениями без лишней сложности.
-							Основные инструменты собраны в едином интерфейсе.
-						</p>
-
-					</div>
-
-					<div class="features-grid">
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">◈</div>
-							<h3>Управление профилями</h3>
-							<p>
-								Импортируйте и организуйте профили подключений.
-								Храните параметры в одном месте.
-							</p>
-						</article>
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">⇄</div>
-							<h3>Маршрутизация</h3>
-							<p>
-								Настраивайте режимы маршрутизации и правила
-								обработки сетевых соединений.
-							</p>
-						</article>
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">⌁</div>
-							<h3>Сетевая диагностика</h3>
-							<p>
-								Проверяйте доступность прокси-серверов
-								и анализируйте результаты соединений.
-							</p>
-						</article>
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">◷</div>
-							<h3>Мониторинг</h3>
-							<p>
-								Получайте информацию о состоянии профилей
-								и параметрах подключений.
-							</p>
-						</article>
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">◎</div>
-							<h3>Интеграция с браузерами</h3>
-							<p>
-								Запускайте поддерживаемые браузеры
-								с настройками локального прокси.
-							</p>
-						</article>
-
-						<article class="feature-card reveal">
-							<div class="feature-icon">⚙</div>
-							<h3>Единый интерфейс</h3>
-							<p>
-								Работайте с профилями, настройками
-								и диагностикой из одного приложения.
-							</p>
-						</article>
-
-					</div>
-
-				</div>
-			</section>
-
-			<!-- PROTOCOLS -->
-
-			<section class="section protocol-section" id="protocols">
-				<div class="container">
-
-					<div class="section-heading reveal">
-
-						<div class="section-label">CONNECTION TYPES</div>
-
-						<h2>
-							Поддерживаемые<br>
-								<span class="gradient-text">подключения.</span>
-							</h2>
-
-						<p>
-							Veyron развивается как платформа для управления
-							различными типами сетевых подключений.
-						</p>
-
-					</div>
-
-					<div class="protocols reveal">
-
-						<div class="protocol">
-							<strong>HTTP Proxy</strong>
-							<span>Поддерживается</span>
-						</div>
-
-						<div class="protocol">
-							<strong>SOCKS5</strong>
-							<span>Поддерживается</span>
-						</div>
-
-					</div>
-
-					<p class="protocol-note">
-						Доступность функций зависит от реализации провайдера
-						и конфигурации подключения.
-					</p>
-
-				</div>
-			</section>
-
-			<!-- DOWNLOAD -->
-
-			<section class="download-section" id="download">
-				<div class="container">
-
-					<div class="download-card reveal">
-
-						<div class="download-info">
-
-							<div class="section-label">LATEST RELEASE</div>
-
-							<h2>
-								Veyron <span>0.1.0</span>
-							</h2>
-
-							<p>
-								Первая публичная версия Veyron Client.
-								Скачайте приложение и начните управлять
-								своими сетевыми подключениями.
-							</p>
-
-							<div class="download-meta">
-								<span>Windows</span>
-								<span>ZIP Archive</span>
-								<span>MIT License</span>
-							</div>
-
-							<div class="download-actions">
-
-								<a class="button button-primary"
-								   href="https://github.com/KyRoNiX23/Veyron/releases/download/0.1.0/Veyron.Client.zip">
-									↓ Скачать Veyron
-								</a>
-
-								<a class="button button-secondary"
-								   href="https://github.com/KyRoNiX23/Veyron/releases/tag/0.1.0"
-								   target="_blank"
-								   rel="noopener">
-									Release notes ↗
-								</a>
-
-							</div>
-
-						</div>
-
-						<div class="download-visual">
-
-							<div class="download-logo">V</div>
-
-							<div class="download-version">
-								VEYRON CLIENT
-							</div>
-
-							<div class="download-version-number">
-								0.1.0
-							</div>
-
-							<div class="download-line"></div>
-
-							<div class="download-caption">
-								NETWORK MANAGEMENT PLATFORM
-							</div>
-
-						</div>
-
-					</div>
-
-				</div>
-			</section>
-
-		</main>
-
-		<!-- FOOTER -->
-
-		<footer>
-			<div class="container footer-inner">
-
-				<a href="#" class="logo">
-					<span class="logo-icon">V</span>
-					Veyron
-				</a>
-
-				<div class="footer-copy">
-					© 2026 Veyron Project. Licensed under MIT.
-				</div>
-
-				<div class="footer-links">
-
-					<a href="https://github.com/KyRoNiX23/Veyron"
-					   target="_blank"
-					   rel="noopener">
-						GitHub
-					</a>
-
-					<a href="https://github.com/KyRoNiX23/Veyron/releases"
-					   target="_blank"
-					   rel="noopener">
-						Releases
-					</a>
-
-					<a href="https://github.com/KyRoNiX23/Veyron/blob/main/LICENSE"
-					   target="_blank"
-					   rel="noopener">
-						License
-					</a>
-
-				</div>
-
-			</div>
-		</footer>
-
-		<script>
-			// Reveal animations
-
-			const observer = new IntersectionObserver(
-			entries => {
-			entries.forEach(entry => {
-			if (entry.isIntersecting) {
-			entry.target.classList.add('visible');
-			observer.unobserve(entry.target);
-			}
-			});
-			},
-			{
-			threshold: 0.12
-			}
-			);
-
-			document.querySelectorAll('.reveal').forEach(element => {
-			observer.observe(element);
-			});
-		</script>
-
-	</body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090711">
+  <meta name="description" content="Veyron — приложение для управления сетевыми подключениями, прокси-профилями и маршрутизацией трафика.">
+  <title>Veyron — Your connection. Your control.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#090711; --surface:#12101d; --surface2:#191529; --text:#f7f4ff;
+      --muted:#a39bb5; --purple:#9565ff; --purple2:#6d3ce0; --line:#ffffff16;
+      --max:1160px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;scroll-padding-top:90px}
+    body{font-family:"DM Sans",sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit}
+    .container{width:min(var(--max),calc(100% - 44px));margin:auto}
+    .ambient{position:fixed;z-index:-2;width:520px;height:520px;border-radius:50%;filter:blur(150px);opacity:.17;pointer-events:none}
+    .ambient.a{background:#7138e8;top:-260px;left:-240px}
+    .ambient.b{background:#4a22a5;right:-300px;top:45vh;opacity:.12}
+    #particles{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55}
+    .navbar{height:76px;position:fixed;inset:0 0 auto;z-index:20;background:#090711c9;backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+    .nav-inner{height:100%;display:flex;align-items:center;justify-content:space-between}
+    .logo{display:flex;align-items:center;gap:11px;font:700 22px "Space Grotesk",sans-serif}
+    .logo-mark{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:linear-gradient(140deg,#bd9aff,#7138e8);box-shadow:0 0 25px #9565ff55;font-size:21px}
+    .nav-links{display:flex;gap:32px;color:var(--muted);font-size:13px}
+    .nav-links a,.footer-links a{transition:color .2s}
+    .nav-links a:hover,.footer-links a:hover{color:#fff}
+    .nav-right{display:flex;align-items:center;gap:20px;font-size:13px}
+    .github{color:#c5bdd4}
+    .btn{min-height:46px;padding:0 20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:13px;border:1px solid transparent;transition:transform .25s,box-shadow .25s,border-color .25s,background .25s}
+    .btn:hover{transform:translateY(-3px)}
+    .btn-primary{background:linear-gradient(120deg,#ad7cff,#713ce5);box-shadow:0 8px 30px #8248ec44;color:#fff}
+    .btn-primary:hover{box-shadow:0 12px 38px #8248ec77}
+    .btn-ghost{border-color:#a77aff70;background:#ffffff05}
+    .btn-ghost:hover{background:#9565ff16;border-color:#bd9aff}
+    .hero{min-height:720px;padding:145px 0 75px;position:relative;display:flex;align-items:center}
+    .hero-grid{display:grid;grid-template-columns:.92fr 1.08fr;align-items:center;gap:35px}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid #9565ff55;background:#9565ff12;border-radius:40px;color:#cbb7ff;font-size:10px;letter-spacing:1.5px;margin-bottom:25px}
+    .pulse{width:7px;height:7px;border-radius:50%;background:#b48aff;box-shadow:0 0 13px #b48aff;animation:pulse 2s infinite}
+    h1,h2,h3{font-family:"Space Grotesk",sans-serif}
+    h1{font-size:clamp(48px,6.3vw,78px);line-height:1.02;letter-spacing:-4px}
+    .gradient{background:linear-gradient(100deg,#fff 4%,#c9adff 53%,#8d5aff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    .hero-copy{color:var(--muted);font-size:15px;line-height:1.85;max-width:490px;margin:23px 0 28px}
+    .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+    .hero-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;color:#898197;font-size:11px}
+    .hero-meta span+span:before{content:"•";margin-right:12px;color:#9565ff}
+    .hero-art{position:relative;perspective:1000px}
+    .hero-art img{width:125%;max-width:none;margin-left:-10%;display:block;border-radius:20px;mix-blend-mode:screen;filter:drop-shadow(0 25px 65px #5e2bb944);animation:float 7s ease-in-out infinite}
+    .art-glow{position:absolute;inset:20% 10%;background:#7435ef;filter:blur(100px);opacity:.17;z-index:-1}
+    .section{padding:95px 0}
+    .section-head{text-align:center;max-width:660px;margin:0 auto 45px}
+    .kicker{color:#b99aff;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:14px}
+    .section-head h2{font-size:clamp(32px,4vw,47px);letter-spacing:-2px}
+    .section-head p{color:var(--muted);font-size:14px;line-height:1.8;margin-top:14px}
+    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+    .feature{position:relative;overflow:hidden;padding:25px;min-height:190px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#171326,#100e19);transition:transform .3s,border-color .3s,background .3s}
+    .feature:before{content:"";position:absolute;width:130px;height:130px;right:-65px;top:-65px;background:#8750ff;filter:blur(65px);opacity:0;transition:opacity .3s}
+    .feature:hover{transform:translateY(-7px);border-color:#9565ff75;background:linear-gradient(145deg,#201832,#100e19)}
+    .feature:hover:before{opacity:.3}
+    .feature-icon{width:43px;height:43px;border-radius:12px;display:grid;place-items:center;background:#9565ff1c;color:#c6aaff;font-size:20px;margin-bottom:20px;box-shadow:inset 0 0 18px #9565ff12}
+    .feature h3{font-size:16px;margin-bottom:9px}
+    .feature p{font-size:12px;line-height:1.8;color:var(--muted)}
+    .preview-section{padding:15px 0 95px}
+    .preview-frame{position:relative;border:1px solid #a77aff55;border-radius:18px;overflow:hidden;background:#100d19;box-shadow:0 30px 100px #0009,0 0 65px #7439e51a}
+    .preview-frame:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,#ffffff0b,transparent 25%,transparent 75%,#9565ff0c)}
+    .preview-frame img{width:100%;display:block;transition:transform .8s}
+    .preview-frame:hover img{transform:scale(1.025)}
+    .preview-caption{display:flex;justify-content:space-between;gap:12px;padding:13px 18px;color:#9289a5;font-size:10px;background:#100d19;border-top:1px solid var(--line)}
+    .protocol-section{background:linear-gradient(180deg,transparent,#120d20 50%,transparent)}
+    .protocols{display:flex;justify-content:center;gap:15px;flex-wrap:wrap}
+    .protocol{min-width:210px;padding:20px 25px;border:1px solid var(--line);border-radius:13px;background:#ffffff06;text-align:center;transition:.25s}
+    .protocol:hover{border-color:#9565ff70;transform:translateY(-4px)}
+    .protocol strong{display:block;font:600 17px "Space Grotesk",sans-serif;margin-bottom:7px}
+    .protocol span{font-size:11px;color:#b99aff}
+    .protocol-note{text-align:center;color:#827990;font-size:11px;margin-top:22px}
+    .download{padding:80px 0 105px}
+    .download-card{position:relative;overflow:hidden;display:grid;grid-template-columns:1.2fr .8fr;align-items:center;gap:30px;padding:45px;border:1px solid #9565ff70;border-radius:22px;background:radial-gradient(circle at 85% 45%,#783de83b,transparent 38%),linear-gradient(130deg,#1b142c,#100d19)}
+    .download-card:after{content:"";position:absolute;width:300px;height:300px;right:-130px;bottom:-220px;border-radius:50%;border:1px solid #b18aff38;box-shadow:0 0 0 25px #9565ff08,0 0 0 50px #9565ff06}
+    .download-card h2{font-size:39px;letter-spacing:-2px;margin:12px 0}
+    .download-card h2 small{font-size:16px;color:#b99aff;vertical-align:middle}
+    .download-card p{max-width:470px;color:var(--muted);font-size:13px;line-height:1.8}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 25px}
+    .chips span{padding:7px 11px;border:1px solid var(--line);border-radius:7px;color:#c3bbd1;font-size:10px}
+    .download-actions{display:flex;gap:11px;flex-wrap:wrap}
+    .download-art{position:relative;z-index:1;display:grid;place-items:center;min-height:190px}
+    .download-art img{width:min(100%,300px);border-radius:18px;mix-blend-mode:screen;filter:drop-shadow(0 0 35px #8a4dff55);animation:float 8s ease-in-out infinite reverse}
+    footer{border-top:1px solid var(--line);padding:30px 0;background:#090711}
+    .footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .copyright{font-size:11px;color:#817990}
+    .footer-links{display:flex;gap:22px;font-size:11px;color:var(--muted)}
+    .reveal{opacity:0;transform:translateY(28px);transition:opacity .75s ease,transform .75s cubic-bezier(.2,.7,.2,1)}
+    .reveal.show{opacity:1;transform:translateY(0)}
+    .delay-1{transition-delay:.08s}.delay-2{transition-delay:.16s}.delay-3{transition-delay:.24s}
+    @keyframes float{0%,100%{transform:translateY(0) rotateY(-2deg)}50%{transform:translateY(-13px) rotateY(2deg)}}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.72)}}
+    @media(max-width:900px){.hero-grid{grid-template-columns:1fr;text-align:center}.hero-copy{margin-left:auto;margin-right:auto}.hero-actions,.hero-meta{justify-content:center}.hero-art{max-width:650px;margin:auto}.hero-art img{width:110%;margin-left:-5%}.features{grid-template-columns:repeat(2,1fr)}.download-card{grid-template-columns:1fr}.download-art{min-height:140px}.nav-links{gap:17px}}
+    @media(max-width:620px){.container{width:calc(100% - 32px)}.navbar{height:66px}.nav-links,.github{display:none}.hero{padding:125px 0 55px;min-height:auto}.hero-grid{gap:25px}h1{letter-spacing:-2.8px}.hero-copy{font-size:14px}.hero-art img{width:120%;margin-left:-10%}.section{padding:70px 0}.features{grid-template-columns:1fr}.feature{min-height:160px}.download-card{padding:26px}.download-card h2{font-size:32px}.download-actions{flex-direction:column}.download-actions .btn{width:100%}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}.preview-caption{flex-direction:column}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}.reveal{opacity:1;transform:none}}
+  </style>
+</head>
+<body>
+  <div class="ambient a"></div><div class="ambient b"></div>
+  <canvas id="particles" aria-hidden="true"></canvas>
+
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="logo" href="#"><span class="logo-mark">V</span>Veyron</a>
+      <nav class="nav-links">
+        <a href="#features">Возможности</a><a href="#protocols">Протоколы</a><a href="#download">Скачать</a>
+      </nav>
+      <div class="nav-right">
+        <a class="github" href="https://github.com/KyRoNiX23/Veyron" target="_blank" rel="noopener">GitHub ↗</a>
+        <a class="btn btn-primary" href="#download">Скачать</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="reveal">
+          <div class="eyebrow"><span class="pulse"></span>NETWORK MANAGEMENT PLATFORM</div>
+          <h1>Your connection.<br><span class="gradient">Your control.</span></h1>
+          <p class="hero-copy">Veyron — приложение для управления сетевыми подключениями. Создавайте профили, настраивайте прокси и контролируйте маршрутизацию трафика в одном интерфейсе.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://github.com/KyRoNiX23/Veyron/releases/download/0.1.0/Veyron.Client.zip">↓ Скачать Veyron</a>
+            <a class="btn btn-ghost" href="https://github.com/KyRoNiX23/Veyron" target="_blank" rel="noopener">Посмотреть GitHub ↗</a>
+          </div>
+          <div class="hero-meta"><span>Windows</span><span>Open Source</span><span>MIT License</span></div>
+        </div>
+        <div class="hero-art reveal delay-2">
+          <div class="art-glow"></div>
+          <img src="assets/veyron-hero.png" alt="Фиолетовая 3D-эмблема Veyron и интерфейс приложения">
+        </div>
+      </div>
+    </section>
+
+    <section class="preview-section">
+      <div class="container">
+        <div class="preview-frame reveal">
+          <img src="assets/veyron-preview.png" alt="Концепт дизайна сайта и интерфейса Veyron">
+          <div class="preview-caption"><span>VEYRON — VISUAL CONCEPT</span><span>Изображение концепта, не скриншот работающей программы</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-head reveal">
+          <div class="kicker">CAPABILITIES</div>
+          <h2>Всё необходимое.<br><span class="gradient">В одном приложении.</span></h2>
+          <p>Инструменты управления подключениями, профилями и диагностикой собраны в одном интерфейсе.</p>
+        </div>
+        <div class="features">
+          <article class="feature reveal"><div class="feature-icon">◈</div><h3>Управление профилями</h3><p>Импортируйте и организуйте профили подключений. Храните параметры в одном месте.</p></article>
+          <article class="feature reveal delay-1"><div class="feature-icon">⇄</div><h3>Маршрутизация</h3><p>Настраивайте доступные режимы и правила обработки сетевых соединений.</p></article>
+          <article class="feature reveal delay-2"><div class="feature-icon">⌁</div><h3>Сетевая диагностика</h3><p>Проверяйте доступность прокси-серверов и анализируйте результаты соединений.</p></article>
+          <article class="feature reveal"><div class="feature-icon">◷</div><h3>Мониторинг</h3><p>Получайте информацию о состоянии профилей и параметрах подключений.</p></article>
+          <article class="feature reveal delay-1"><div class="feature-icon">◎</div><h3>Интеграция с браузерами</h3><p>Запускайте поддерживаемые браузеры с настройками локального прокси.</p></article>
+          <article class="feature reveal delay-2"><div class="feature-icon">⚙</div><h3>Единый интерфейс</h3><p>Работайте с профилями, настройками и диагностикой из одного приложения.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section protocol-section" id="protocols">
+      <div class="container">
+        <div class="section-head reveal">
+          <div class="kicker">CONNECTION TYPES</div>
+          <h2>Поддерживаемые <span class="gradient">подключения.</span></h2>
+          <p>В текущей версии заявлены следующие типы прокси-подключений.</p>
+        </div>
+        <div class="protocols reveal">
+          <div class="protocol"><strong>HTTP Proxy</strong><span>Поддерживается</span></div>
+          <div class="protocol"><strong>SOCKS5</strong><span>Поддерживается</span></div>
+        </div>
+        <p class="protocol-note">Доступность функций зависит от реализации провайдера и конфигурации подключения.</p>
+      </div>
+    </section>
+
+    <section class="download" id="download">
+      <div class="container">
+        <div class="download-card reveal">
+          <div>
+            <div class="kicker">LATEST RELEASE</div>
+            <h2>Veyron <small>0.1.0</small></h2>
+            <p>Первая публичная версия Veyron Client. Посмотрите описание релиза или скачайте архив приложения.</p>
+            <div class="chips"><span>Windows</span><span>ZIP Archive</span><span>MIT License</span></div>
+            <div class="download-actions">
+              <a class="btn btn-primary" href="https://github.com/KyRoNiX23/Veyron/releases/download/0.1.0/Veyron.Client.zip">↓ Скачать Veyron</a>
+              <a class="btn btn-ghost" href="https://github.com/KyRoNiX23/Veyron/releases/tag/0.1.0" target="_blank" rel="noopener">Release notes ↗</a>
+            </div>
+          </div>
+          <div class="download-art"><img src="assets/veyron-hero.png" alt="Эмблема Veyron"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <a class="logo" href="#"><span class="logo-mark">V</span>Veyron</a>
+      <div class="copyright">© 2026 Veyron Project. Licensed under MIT.</div>
+      <div class="footer-links">
+        <a href="https://github.com/KyRoNiX23/Veyron" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/KyRoNiX23/Veyron/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/KyRoNiX23/Veyron/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Reveal elements when they enter the viewport.
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("show");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+    // Lightweight ambient particle animation.
+    (() => {
+      const canvas = document.getElementById("particles");
+      const ctx = canvas.getContext("2d");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) return;
+
+      let width, height, particles = [];
+      const count = Math.min(65, Math.floor(window.innerWidth / 20));
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        particles = Array.from({ length: count }, () => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: Math.random() * 1.6 + .4,
+          vx: (Math.random() - .5) * .18,
+          vy: (Math.random() - .5) * .18,
+          alpha: Math.random() * .5 + .15
+        }));
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, width, height);
+        for (const p of particles) {
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0) p.x = width;
+          if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height;
+          if (p.y > height) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(174,130,255,${p.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener("resize", resize);
+      resize();
+      draw();
+    })();
+  </script>
+</body>
 </html>
-```
