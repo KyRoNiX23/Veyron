@@ -1,14 +1,15 @@
 ﻿
 using System;
 using System.Drawing;
+using System.Linq;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Veyron.Client.Themes;
 using Veyron.Core.Enums;
+using Veyron.Core.Models;
 using Veyron.Infrastructure.Storage;
 using Veyron.Network.Diagnostics;
-using System.Linq;
-using System.Net.NetworkInformation;
 
 namespace Veyron.Client.Forms;
 
@@ -25,6 +26,9 @@ public sealed class DiagnosticsForm : Form
     public DiagnosticsForm()
     {
         InitializeInterface();
+        var storage = new JsonStorage<ConnectionProfile>("profiles.json");
+        MessageBox.Show(storage.GetFileDiagnostic());
+        MessageBox.Show(storage.AnalyzeFile());
     }
 
     private void InitializeInterface()

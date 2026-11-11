@@ -1,7 +1,10 @@
 ﻿
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -15,26 +18,38 @@ namespace Veyron.Network.Proxy;
 
 public sealed class LocalProxyServer : IAsyncDisposable
 {
+    private const int MaxHeaderSize = 32768;
+    private const int BufferSize = 81920;
+
     private readonly ConnectionProfile profile;
     private readonly TcpListener listener;
+    private readonly TrafficRouter trafficRouter = new();
+    private readonly RoutingProfile routingProfile;
+
+    private readonly ConcurrentDictionary<Guid, ProxyConnectionInfo>
+        connections = new();
+
+    private readonly ConcurrentDictionary<Guid, TcpClient>
+        clients = new();
+
+    private readonly ConcurrentDictionary<Guid, Task>
+        connectionTasks = new();
+
+    private readonly SemaphoreSlim lifecycleLock = new(1, 1);
 
     private CancellationTokenSource? cancellation;
     private Task? acceptTask;
 
-    public int Port { get; }
-
-    public bool IsRunning => cancellation != null;
-
-    private readonly ConcurrentDictionary<Guid, ProxyConnectionInfo>
-    connections = new();
-
-    public event Action<ProxyConnectionInfo>? ConnectionUpdated;
-
-    public IReadOnlyCollection<ProxyConnectionInfo> Connections =>
-        connections.Values.ToArray();
-
     private long totalBytesSent;
     private long totalBytesReceived;
+
+    private bool disposed;
+
+    public int Port { get; }
+
+    public bool IsRunning =>
+        cancellation != null &&
+        !cancellation.IsCancellationRequested;
 
     public long TotalBytesSent =>
         Interlocked.Read(ref totalBytesSent);
@@ -45,23 +60,22 @@ public sealed class LocalProxyServer : IAsyncDisposable
     public int ActiveConnections =>
         connections.Count;
 
-    private readonly TrafficRouter trafficRouter = new();
-    private readonly RoutingProfile routingProfile;
+    public IReadOnlyCollection<ProxyConnectionInfo> Connections =>
+        connections.Values.ToArray();
 
-    private void NotifyConnection(ProxyConnectionInfo info)
-    {
-        ConnectionUpdated?.Invoke(info);
-    }
+    public event Action<ProxyConnectionInfo>? ConnectionUpdated;
+
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(15);
 
     public LocalProxyServer(
-    ConnectionProfile profile,
-    int localPort = 2080,
-    RoutingProfile? routingProfile = null)
+        ConnectionProfile profile,
+        int localPort = 2080,
+        RoutingProfile? routingProfile = null)
     {
         this.profile = profile ??
             throw new ArgumentNullException(nameof(profile));
 
-        if (localPort < 1 || localPort > 65535)
+        if (localPort is < 1 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(localPort));
 
         if (profile.Type is not (
@@ -69,14 +83,14 @@ public sealed class LocalProxyServer : IAsyncDisposable
             ConnectionType.SOCKS5))
         {
             throw new NotSupportedException(
-                $"Local proxy does not support {profile.Type} yet.");
+                $"Unsupported upstream proxy: {profile.Type}");
         }
 
         if (string.IsNullOrWhiteSpace(profile.Host) ||
-            profile.Port < 1 ||
-            profile.Port > 65535)
+            profile.Port is < 1 or > 65535)
         {
-            throw new ArgumentException("Invalid upstream proxy.");
+            throw new ArgumentException(
+                "Invalid upstream proxy configuration.");
         }
 
         this.routingProfile = routingProfile ?? new RoutingProfile
@@ -92,46 +106,111 @@ public sealed class LocalProxyServer : IAsyncDisposable
             Port);
     }
 
-    public Task StartAsync()
+    public async Task StartAsync()
     {
-        if (IsRunning)
-            return Task.CompletedTask;
+        await lifecycleLock.WaitAsync();
 
-        cancellation = new CancellationTokenSource();
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
 
-        listener.Start();
+            if (IsRunning)
+                return;
 
-        acceptTask = AcceptLoopAsync(cancellation.Token);
+            var cts = new CancellationTokenSource();
 
-        return Task.CompletedTask;
+            try
+            {
+                listener.Start();
+
+                Debug.WriteLine(
+                    $"[Veyron Proxy] STARTED: 127.0.0.1:{Port}");
+
+                Debug.WriteLine(
+                    $"[Veyron Proxy] IsListening: {listener.Server.IsBound}");
+
+                cancellation = cts;
+
+                acceptTask = AcceptLoopAsync(cts.Token);
+
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Listening on 127.0.0.1:{Port}");
+            }
+            catch
+            {
+                Debug.WriteLine($"[Veyron Proxy] STOPPING: 127.0.0.1:{Port}");
+                listener.Stop();
+                cancellation = null;
+                acceptTask = null;
+                cts.Dispose();
+
+                throw;
+            }
+        }
+        finally
+        {
+            lifecycleLock.Release();
+        }
     }
 
     public async Task StopAsync()
     {
-        var cts = cancellation;
-
-        if (cts == null)
-            return;
-
-        cancellation = null;
-
-        cts.Cancel();
-        listener.Stop();
+        await lifecycleLock.WaitAsync();
 
         try
         {
-            if (acceptTask != null)
-                await acceptTask;
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+            var cts = cancellation;
 
-        cts.Dispose();
-        acceptTask = null;
+            if (cts == null)
+                return;
+
+            cancellation = null;
+
+            cts.Cancel();
+            listener.Stop();
+
+            foreach (var client in clients.Values)
+            {
+                try
+                {
+                    client.Close();
+                }
+                catch
+                {
+                }
+            }
+
+            try
+            {
+                if (acceptTask != null)
+                    await acceptTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            Task[] activeTasks = connectionTasks.Values.ToArray();
+
+            try
+            {
+                await Task.WhenAll(activeTasks);
+            }
+            catch
+            {
+            }
+
+            cts.Dispose();
+            acceptTask = null;
+
+            Debug.WriteLine("[Veyron Proxy] Stopped.");
+        }
+        finally
+        {
+            lifecycleLock.Release();
+        }
     }
 
     private async Task AcceptLoopAsync(
@@ -157,17 +236,33 @@ public sealed class LocalProxyServer : IAsyncDisposable
             {
                 break;
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Accept error: {ex.Message}");
 
-            _ = HandleClientAsync(client, token);
+                break;
+            }
+
+            Guid id = Guid.NewGuid();
+
+            clients.TryAdd(id, client);
+
+            Task task = HandleClientTrackedAsync(
+                id,
+                client,
+                token);
+
+            connectionTasks.TryAdd(id, task);
         }
     }
 
-
     private async Task HandleClientAsync(
+        Guid clientId,
         TcpClient localClient,
         CancellationToken token)
     {
-        ProxyConnectionInfo? connectionInfo = null;
+        ProxyConnectionInfo? info = null;
         bool connected = false;
 
         using (localClient)
@@ -176,86 +271,97 @@ public sealed class LocalProxyServer : IAsyncDisposable
             {
                 localClient.NoDelay = true;
 
-                NetworkStream localStream = localClient.GetStream();
+                NetworkStream localStream =
+                    localClient.GetStream();
 
                 string headers = await ReadHeadersAsync(
                     localStream,
                     token);
 
-                string firstLine = headers.Split(
+                string[] lines = headers.Split(
                     new[] { "\r\n" },
-                    StringSplitOptions.None)[0];
+                    StringSplitOptions.None);
+
+                string firstLine = lines[0];
+
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Request: {firstLine}");
 
                 string[] parts = firstLine.Split(
                     ' ',
                     StringSplitOptions.RemoveEmptyEntries);
 
-                if (parts.Length < 3 ||
-                    !parts[0].Equals(
-                        "CONNECT",
-                        StringComparison.OrdinalIgnoreCase))
+                if (parts.Length < 3)
                 {
-                    await SendResponseAsync(
+                    await SendStatusAsync(
                         localStream,
-                        "HTTP/1.1 501 Not Implemented\r\n" +
-                        "Connection: close\r\n\r\n",
+                        400,
+                        "Bad Request",
                         token);
 
                     return;
                 }
 
-                if (!Uri.TryCreate(
-                    "tcp://" + parts[1],
-                    UriKind.Absolute,
-                    out Uri? target))
+                if (!parts[0].Equals(
+                    "CONNECT",
+                    StringComparison.OrdinalIgnoreCase))
                 {
-                    await SendResponseAsync(
+                    Debug.WriteLine(
+                        $"[Veyron Proxy] Unsupported method: {parts[0]}");
+
+                    await SendStatusAsync(
                         localStream,
-                        "HTTP/1.1 400 Bad Request\r\n" +
-                        "Connection: close\r\n\r\n",
+                        405,
+                        "Method Not Allowed",
+                        token,
+                        "Allow: CONNECT\r\n");
+
+                    return;
+                }
+
+                if (!TryParseAuthority(
+                    parts[1],
+                    out string targetHost,
+                    out int targetPort))
+                {
+                    await SendStatusAsync(
+                        localStream,
+                        400,
+                        "Bad Request",
                         token);
 
                     return;
                 }
 
-                string targetHost = target.Host;
-                int targetPort = target.Port;
-
-                if (targetPort < 1 || targetPort > 65535)
-                {
-                    await SendResponseAsync(
-                        localStream,
-                        "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n",
-                        token);
-
-                    return;
-                }
-
-                // Определяем маршрут
-                RoutingAction route = trafficRouter.Resolve(
-                    targetHost,
-                    routingProfile);
-
-                // Создаём информацию о подключении
-                connectionInfo = new ProxyConnectionInfo
+                info = new ProxyConnectionInfo
                 {
                     Destination = $"{targetHost}:{targetPort}",
                     Status = "Connecting"
                 };
 
-                connections.TryAdd(connectionInfo.Id, connectionInfo);
-                NotifyConnection(connectionInfo);
+                connections.TryAdd(info.Id, info);
+                NotifyConnection(info);
 
-                // Блокировка
+                RoutingAction route = trafficRouter.Resolve(
+                    targetHost,
+                    routingProfile);
+
+                Debug.WriteLine($"========== VEYRON ROUTING ==========");
+                Debug.WriteLine($"Destination: {targetHost}:{targetPort}");
+                Debug.WriteLine($"Action: {route}");
+                Debug.WriteLine($"Upstream type: {profile.Type}");
+                Debug.WriteLine($"Upstream host: {profile.Host}:{profile.Port}");
+                Debug.WriteLine($"====================================");
+
                 if (route == RoutingAction.Block)
                 {
-                    connectionInfo.Status = "Blocked";
-                    NotifyConnection(connectionInfo);
+                    info.Status = "Blocked";
+                    NotifyConnection(info);
 
-                    await SendResponseAsync(
+                    await SendStatusAsync(
                         localStream,
-                        "HTTP/1.1 403 Forbidden\r\n" +
-                        "Connection: close\r\n\r\n",
+                        403,
+                        "Forbidden",
                         token);
 
                     return;
@@ -268,21 +374,22 @@ public sealed class LocalProxyServer : IAsyncDisposable
 
                 if (route == RoutingAction.Direct)
                 {
-                    // Прямое подключение к целевому серверу
-                    await upstream.ConnectAsync(
+                    await ConnectTcpAsync(
+                        upstream,
                         targetHost,
                         targetPort,
                         token);
                 }
                 else if (route == RoutingAction.Proxy)
                 {
-                    // Подключение через выбранный прокси
-                    await upstream.ConnectAsync(
+                    await ConnectTcpAsync(
+                        upstream,
                         profile.Host,
                         profile.Port,
                         token);
 
-                    NetworkStream upstreamStream = upstream.GetStream();
+                    NetworkStream upstreamStream =
+                        upstream.GetStream();
 
                     if (profile.Type == ConnectionType.HTTP)
                     {
@@ -292,7 +399,7 @@ public sealed class LocalProxyServer : IAsyncDisposable
                             targetPort,
                             token);
                     }
-                    else if (profile.Type == ConnectionType.SOCKS5)
+                    else
                     {
                         await EstablishSocks5TunnelAsync(
                             upstreamStream,
@@ -301,40 +408,54 @@ public sealed class LocalProxyServer : IAsyncDisposable
                             token);
                     }
                 }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"Unknown routing action: {route}");
+                }
 
                 await SendResponseAsync(
                     localStream,
                     "HTTP/1.1 200 Connection Established\r\n" +
-                    "Proxy-Agent: Veyron\r\n\r\n",
+                    "Proxy-Agent: Veyron\r\n" +
+                    "Connection: keep-alive\r\n\r\n",
                     token);
 
                 connected = true;
-                connectionInfo.Status = "Connected";
 
-                NotifyConnection(connectionInfo);
+                info.Status = "Connected";
+                NotifyConnection(info);
+
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Connected: {info.Destination}");
 
                 await RelayAsync(
                     localClient,
                     upstream,
-                    connectionInfo,
+                    info,
                     token);
             }
             catch (OperationCanceledException)
             {
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Connection cancelled: {clientId}");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                if (connectionInfo != null)
-                    connectionInfo.Status = "Failed";
+                Debug.WriteLine(
+                    $"[Veyron Proxy] Connection failed: {ex}");
+
+                if (info != null)
+                    info.Status = "Failed";
 
                 try
                 {
                     if (localClient.Connected)
                     {
-                        await SendResponseAsync(
+                        await SendStatusAsync(
                             localClient.GetStream(),
-                            "HTTP/1.1 502 Bad Gateway\r\n" +
-                            "Connection: close\r\n\r\n",
+                            502,
+                            "Bad Gateway",
                             CancellationToken.None);
                     }
                 }
@@ -344,21 +465,53 @@ public sealed class LocalProxyServer : IAsyncDisposable
             }
             finally
             {
-                if (connectionInfo != null)
+                if (info != null)
                 {
                     if (connected)
-                        connectionInfo.Status = "Disconnected";
+                        info.Status = "Disconnected";
 
-                    NotifyConnection(connectionInfo);
+                    NotifyConnection(info);
 
                     connections.TryRemove(
-                        connectionInfo.Id,
+                        info.Id,
                         out _);
                 }
+
+                clients.TryRemove(clientId, out _);
             }
         }
     }
 
+    private static bool TryParseAuthority(
+        string authority,
+        out string host,
+        out int port)
+    {
+        host = string.Empty;
+        port = 0;
+
+        if (string.IsNullOrWhiteSpace(authority))
+            return false;
+
+        if (!Uri.TryCreate(
+            "http://" + authority,
+            UriKind.Absolute,
+            out Uri? uri))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(uri.Host))
+            return false;
+
+        if (uri.Port is < 1 or > 65535)
+            return false;
+
+        host = uri.Host;
+        port = uri.Port;
+
+        return true;
+    }
 
     private async Task EstablishHttpTunnelAsync(
         NetworkStream stream,
@@ -367,13 +520,14 @@ public sealed class LocalProxyServer : IAsyncDisposable
         CancellationToken token)
     {
         string request =
-            $"CONNECT {host}:{port} HTTP/1.1\r\n" +
-            $"Host: {host}:{port}\r\n" +
+            $"CONNECT {FormatAuthority(host, port)} HTTP/1.1\r\n" +
+            $"Host: {FormatAuthority(host, port)}\r\n" +
             "Proxy-Connection: Keep-Alive\r\n\r\n";
 
-        byte[] bytes = Encoding.ASCII.GetBytes(request);
-
-        await stream.WriteAsync(bytes, token);
+        await SendResponseAsync(
+            stream,
+            request,
+            token);
 
         string response = await ReadHeadersAsync(
             stream,
@@ -402,7 +556,6 @@ public sealed class LocalProxyServer : IAsyncDisposable
         int port,
         CancellationToken token)
     {
-        // SOCKS5 greeting: no authentication.
         await stream.WriteAsync(
             new byte[] { 0x05, 0x01, 0x00 },
             token);
@@ -413,30 +566,58 @@ public sealed class LocalProxyServer : IAsyncDisposable
             token);
 
         if (greeting[0] != 0x05 || greeting[1] != 0x00)
-            throw new IOException("SOCKS5 authentication method rejected.");
+        {
+            throw new IOException(
+                "SOCKS5 proxy does not accept no-authentication mode.");
+        }
 
-        byte[] domain = Encoding.ASCII.GetBytes(host);
+        byte[] addressBytes;
+        byte addressType;
 
-        if (domain.Length == 0 || domain.Length > 255)
-            throw new IOException("Invalid SOCKS5 destination hostname.");
+        if (IPAddress.TryParse(host, out IPAddress? ip))
+        {
+            addressBytes = ip.GetAddressBytes();
 
-        byte[] request = new byte[7 + domain.Length];
+            addressType = ip.AddressFamily == AddressFamily.InterNetwork
+                ? (byte)0x01
+                : (byte)0x04;
+        }
+        else
+        {
+            addressBytes = Encoding.ASCII.GetBytes(host);
+
+            if (addressBytes.Length is < 1 or > 255)
+                throw new IOException("Invalid SOCKS5 hostname.");
+
+            addressType = 0x03;
+        }
+
+        int domainLength = addressType == 0x03 ? 1 : 0;
+
+        byte[] request = new byte[
+            4 + domainLength + addressBytes.Length + 2];
 
         request[0] = 0x05;
         request[1] = 0x01;
         request[2] = 0x00;
-        request[3] = 0x03;
-        request[4] = (byte)domain.Length;
+        request[3] = addressType;
+
+        int offset = 4;
+
+        if (addressType == 0x03)
+            request[offset++] = (byte)addressBytes.Length;
 
         Buffer.BlockCopy(
-            domain,
+            addressBytes,
             0,
             request,
-            5,
-            domain.Length);
+            offset,
+            addressBytes.Length);
 
-        request[^2] = (byte)(port >> 8);
-        request[^1] = (byte)(port & 0xFF);
+        offset += addressBytes.Length;
+
+        request[offset++] = (byte)(port >> 8);
+        request[offset] = (byte)(port & 0xFF);
 
         await stream.WriteAsync(request, token);
 
@@ -448,7 +629,9 @@ public sealed class LocalProxyServer : IAsyncDisposable
         if (response[0] != 0x05 || response[1] != 0x00)
         {
             throw new IOException(
-                $"SOCKS5 connection rejected. Code: {response[1]}");
+    $"SOCKS5 rejected connection: " +
+    GetSocks5Error(response[1]) +
+    $" (0x{response[1]:X2})");
         }
 
         int addressLength = response[3] switch
@@ -467,16 +650,12 @@ public sealed class LocalProxyServer : IAsyncDisposable
             token);
     }
 
-
     private async Task RelayAsync(
-        TcpClient local,
-        TcpClient upstream,
-        ProxyConnectionInfo info,
-        CancellationToken token)
+    TcpClient local,
+    TcpClient upstream,
+    ProxyConnectionInfo info,
+    CancellationToken token)
     {
-        using var relayCancellation =
-            CancellationTokenSource.CreateLinkedTokenSource(token);
-
         NetworkStream localStream = local.GetStream();
         NetworkStream upstreamStream = upstream.GetStream();
 
@@ -485,46 +664,26 @@ public sealed class LocalProxyServer : IAsyncDisposable
             upstreamStream,
             info,
             true,
-            relayCancellation.Token);
+            token);
 
         Task download = TransferAsync(
             upstreamStream,
             localStream,
             info,
             false,
-            relayCancellation.Token);
+            token);
 
-        await Task.WhenAny(upload, download);
-
-        relayCancellation.Cancel();
-
-        local.Close();
-        upstream.Close();
-
-        try
-        {
-            await Task.WhenAll(upload, download);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (IOException)
-        {
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        await Task.WhenAll(upload, download);
     }
-
 
     private async Task TransferAsync(
         Stream source,
         Stream destination,
         ProxyConnectionInfo info,
-        bool isUpload,
+        bool upload,
         CancellationToken token)
     {
-        byte[] buffer = new byte[81920];
+        byte[] buffer = new byte[BufferSize];
 
         while (!token.IsCancellationRequested)
         {
@@ -539,7 +698,7 @@ public sealed class LocalProxyServer : IAsyncDisposable
                 buffer.AsMemory(0, count),
                 token);
 
-            if (isUpload)
+            if (upload)
             {
                 Interlocked.Add(ref totalBytesSent, count);
                 info.BytesSent += count;
@@ -554,6 +713,49 @@ public sealed class LocalProxyServer : IAsyncDisposable
         }
     }
 
+    private static async Task<string> ReadHeadersAsync(
+        NetworkStream stream,
+        CancellationToken token)
+    {
+        using var memory = new MemoryStream();
+
+        byte[] buffer = new byte[1];
+
+        while (memory.Length < MaxHeaderSize)
+        {
+            int read = await stream.ReadAsync(
+                buffer.AsMemory(0, 1),
+                token);
+
+            if (read == 0)
+            {
+                throw new IOException(
+                    "Connection closed while reading HTTP headers.");
+            }
+
+            memory.WriteByte(buffer[0]);
+
+            if (memory.Length >= 4)
+            {
+                byte[] data = memory.GetBuffer();
+                int length = (int)memory.Length;
+
+                if (data[length - 4] == 13 &&
+                    data[length - 3] == 10 &&
+                    data[length - 2] == 13 &&
+                    data[length - 1] == 10)
+                {
+                    return Encoding.ASCII.GetString(
+                        data,
+                        0,
+                        length);
+                }
+            }
+        }
+
+        throw new IOException(
+            "HTTP headers exceeded the maximum allowed size.");
+    }
 
     private static async Task<byte[]> ReadExactlyAsync(
         Stream stream,
@@ -579,6 +781,24 @@ public sealed class LocalProxyServer : IAsyncDisposable
         return result;
     }
 
+    private static Task SendStatusAsync(
+        Stream stream,
+        int statusCode,
+        string reason,
+        CancellationToken token,
+        string additionalHeaders = "")
+    {
+        string response =
+            $"HTTP/1.1 {statusCode} {reason}\r\n" +
+            additionalHeaders +
+            "Connection: close\r\n\r\n";
+
+        return SendResponseAsync(
+            stream,
+            response,
+            token);
+    }
+
     private static Task SendResponseAsync(
         Stream stream,
         string response,
@@ -586,49 +806,122 @@ public sealed class LocalProxyServer : IAsyncDisposable
     {
         byte[] bytes = Encoding.ASCII.GetBytes(response);
 
-        return stream.WriteAsync(bytes, token).AsTask();
+        return stream.WriteAsync(
+            bytes.AsMemory(),
+            token).AsTask();
+    }
+
+    private static string FormatAuthority(
+        string host,
+        int port)
+    {
+        string formattedHost = host.Contains(':') &&
+                               !host.StartsWith("[")
+            ? $"[{host}]"
+            : host;
+
+        return $"{formattedHost}:{port}";
+    }
+
+    private void NotifyConnection(ProxyConnectionInfo info)
+    {
+        try
+        {
+            ConnectionUpdated?.Invoke(info);
+        }
+        catch (IOException ex)
+        {
+            Debug.WriteLine(
+                $"[Veyron Proxy] I/O error ({info.Id}): {ex.Message}");
+
+            if (info != null)
+                info.Status = "Failed";
+        }
+        catch (SocketException ex)
+        {
+            Debug.WriteLine(
+                $"[Veyron Proxy] Socket error ({info.Id}): {ex.Message}");
+
+            if (info != null)
+                info.Status = "Failed";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(
+                $"[Veyron Proxy] Unexpected error ({info.Id}): {ex}");
+
+            if (info != null)
+                info.Status = "Failed";
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        if (disposed)
+            return;
+
         await StopAsync();
+
+        disposed = true;
+
+        lifecycleLock.Dispose();
     }
 
-    private static async Task<string> ReadHeadersAsync(
-    NetworkStream stream,
+    private static string GetSocks5Error(byte code)
+    {
+        return code switch
+        {
+            0x01 => "General SOCKS server failure",
+            0x02 => "Connection not allowed by ruleset",
+            0x03 => "Network unreachable",
+            0x04 => "Host unreachable",
+            0x05 => "Connection refused",
+            0x06 => "TTL expired",
+            0x07 => "Command not supported",
+            0x08 => "Address type not supported",
+            _ => $"Unknown SOCKS5 error: 0x{code:X2}"
+        };
+    }
+
+    private static async Task ConnectTcpAsync(
+    TcpClient client,
+    string host,
+    int port,
     CancellationToken token)
     {
-        const int maxHeaderSize = 32768;
+        using var timeoutCts =
+            CancellationTokenSource.CreateLinkedTokenSource(token);
 
-        using var memory = new MemoryStream();
+        timeoutCts.CancelAfter(ConnectTimeout);
 
-        byte[] buffer = new byte[1];
-
-        while (memory.Length < maxHeaderSize)
+        try
         {
-            int read = await stream.ReadAsync(buffer, token);
-
-            if (read == 0)
-                throw new IOException("Connection closed while reading headers.");
-
-            memory.WriteByte(buffer[0]);
-
-            byte[] data = memory.GetBuffer();
-            int length = (int)memory.Length;
-
-            if (length >= 4 &&
-                data[length - 4] == '\r' &&
-                data[length - 3] == '\n' &&
-                data[length - 2] == '\r' &&
-                data[length - 1] == '\n')
-            {
-                return Encoding.ASCII.GetString(
-                    data,
-                    0,
-                    length);
-            }
+            await client.ConnectAsync(
+                host,
+                port,
+                timeoutCts.Token);
         }
+        catch (OperationCanceledException)
+            when (!token.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Connection to {host}:{port} timed out.");
+        }
+    }
 
-        throw new IOException("HTTP headers are too large.");
+    private async Task HandleClientTrackedAsync(
+    Guid id,
+    TcpClient client,
+    CancellationToken token)
+    {
+        try
+        {
+            await HandleClientAsync(id, client, token);
+        }
+        finally
+        {
+            connectionTasks.TryRemove(id, out _);
+            clients.TryRemove(id, out _);
+        }
     }
 }

@@ -1,69 +1,136 @@
 ﻿
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Veyron.Core.Models;
 
 namespace Veyron.Infrastructure.Storage;
 
-public class ProfileRepository
+public sealed class ProfileRepository
 {
     private readonly JsonStorage<ConnectionProfile> storage =
         new("profiles.json");
 
-    public Task<List<ConnectionProfile>> GetAllAsync()
-        => storage.LoadAsync();
+    private readonly SemaphoreSlim semaphore = new(1, 1);
+
+    public async Task<List<ConnectionProfile>> GetAllAsync()
+    {
+        await semaphore.WaitAsync();
+
+        try
+        {
+            return await storage.LoadAsync();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
 
     public async Task AddAsync(ConnectionProfile profile)
     {
-        var items = await storage.LoadAsync();
+        ArgumentNullException.ThrowIfNull(profile);
 
-        items.Add(profile);
+        await semaphore.WaitAsync();
 
-        await storage.SaveAsync(items);
+        try
+        {
+            var items = await storage.LoadAsync();
+            items.Add(profile);
+
+            await storage.SaveAsync(items);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     public async Task RemoveAsync(string id)
     {
-        var items = await storage.LoadAsync();
+        await semaphore.WaitAsync();
 
-        items.RemoveAll(x => x.Id == id);
+        try
+        {
+            var items = await storage.LoadAsync();
+            items.RemoveAll(x => x.Id == id);
 
-        await storage.SaveAsync(items);
+            await storage.SaveAsync(items);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     public async Task UpdateAsync(ConnectionProfile profile)
     {
-        var items = await storage.LoadAsync();
+        ArgumentNullException.ThrowIfNull(profile);
 
-        int index = items.FindIndex(x => x.Id == profile.Id);
+        await semaphore.WaitAsync();
 
-        if (index < 0)
-            return;
+        try
+        {
+            var items = await storage.LoadAsync();
 
-        items[index] = profile;
+            int index = items.FindIndex(x => x.Id == profile.Id);
 
-        await storage.SaveAsync(items);
+            if (index < 0)
+                return;
+
+            items[index] = profile;
+
+            await storage.SaveAsync(items);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     public async Task RemoveRangeAsync(IEnumerable<string> ids)
     {
+        ArgumentNullException.ThrowIfNull(ids);
+
         var idSet = ids.ToHashSet();
 
         if (idSet.Count == 0)
             return;
 
-        var items = await storage.LoadAsync();
+        await semaphore.WaitAsync();
 
-        items.RemoveAll(x => idSet.Contains(x.Id));
+        try
+        {
+            var items = await storage.LoadAsync();
 
-        await storage.SaveAsync(items);
+            items.RemoveAll(x => idSet.Contains(x.Id));
+
+            await storage.SaveAsync(items);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     public async Task RemoveAllAsync()
     {
-        await storage.SaveAsync(new List<ConnectionProfile>());
+        await semaphore.WaitAsync();
+
+        try
+        {
+            await storage.SaveAsync(new List<ConnectionProfile>());
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     public async Task<int> AddRangeAsync(
-    IEnumerable<ConnectionProfile> profiles)
+        IEnumerable<ConnectionProfile> profiles)
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
@@ -72,28 +139,43 @@ public class ProfileRepository
         if (incoming.Count == 0)
             return 0;
 
-        var items = await storage.LoadAsync();
+        await semaphore.WaitAsync();
 
-        var known = new HashSet<string>(
-            items.Select(p => $"{p.Type}|{p.Host}|{p.Port}"),
-            StringComparer.OrdinalIgnoreCase);
-
-        int added = 0;
-
-        foreach (var profile in incoming)
+        try
         {
-            string key = $"{profile.Type}|{profile.Host}|{profile.Port}";
+            var items = await storage.LoadAsync();
 
-            if (!known.Add(key))
-                continue;
+            var known = new HashSet<string>(
+                items.Select(CreateKey),
+                StringComparer.OrdinalIgnoreCase);
 
-            items.Add(profile);
-            added++;
+            int added = 0;
+
+            foreach (var profile in incoming)
+            {
+                if (profile == null)
+                    continue;
+
+                if (!known.Add(CreateKey(profile)))
+                    continue;
+
+                items.Add(profile);
+                added++;
+            }
+
+            if (added > 0)
+                await storage.SaveAsync(items);
+
+            return added;
         }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
 
-        if (added > 0)
-            await storage.SaveAsync(items);
-
-        return added;
+    private static string CreateKey(ConnectionProfile profile)
+    {
+        return $"{profile.Type}|{profile.Host.Trim()}|{profile.Port}";
     }
 }

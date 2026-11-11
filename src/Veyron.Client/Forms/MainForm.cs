@@ -42,9 +42,9 @@ public class MainForm : Form
 
     private RoutingProfile routingProfile = new()
     {
-        Name = "Veyron Split",
-        Mode = RoutingMode.RuleBased,
-        DefaultAction = RoutingAction.Direct
+        Name = "Veyron Proxy",
+        Mode = RoutingMode.GlobalProxy,
+        DefaultAction = RoutingAction.Proxy
     };
 
     private void OpenTrafficRouting()
@@ -1300,10 +1300,11 @@ public class MainForm : Form
         browserForm.ShowDialog(this);
     }
 
-    private void BrowserProcess_Exited(
-    object? sender,
-    EventArgs e)
+    private void BrowserProcess_Exited(object? sender, EventArgs e)
     {
+        if (!ReferenceEquals(sender, browserProcess))
+            return;
+
         _ = StopLocalProxyAsync();
     }
 
@@ -1312,59 +1313,78 @@ public class MainForm : Form
         LocalProxyServer? server = localProxyServer;
         localProxyServer = null;
 
-        if (server != null)
-            await server.DisposeAsync();
-
         Process? process = browserProcess;
         browserProcess = null;
 
-        process?.Dispose();
+        if (process != null)
+        {
+            process.Exited -= BrowserProcess_Exited;
+            process.Dispose();
+        }
+
+        if (server != null)
+            await server.DisposeAsync();
     }
 
+
     private async Task LaunchBrowserWithProxyAsync(
-    BrowserType browser,
-    string? url)
+        BrowserType browser,
+        string? url)
     {
-        if (selectedProfile == null)
+        ConnectionProfile? profile = selectedProfile;
+
+        if (profile == null)
         {
             MessageBox.Show("Select a profile first.");
             return;
         }
 
-        if (localProxyServer != null)
-            await StopLocalProxyAsync();
+        if (browserProcess != null && !browserProcess.HasExited)
+        {
+            MessageBox.Show("A browser session is already running.");
+            return;
+        }
+
+        await StopLocalProxyAsync();
 
         try
         {
             localProxyServer = new LocalProxyServer(
-    selectedProfile,
-    2080,
-    routingProfile);
+                profile,
+                2080,
+                routingProfile);
 
             await localProxyServer.StartAsync();
 
+            string localAddress =
+                $"http://127.0.0.1:{localProxyServer.Port}";
+
             browserProcess = browserLauncher.Start(
                 browser,
-                selectedProfile,
+                profile,
                 url,
-                "http://127.0.0.1:2080");
+                localAddress);
 
-            browserProcess.Exited += BrowserProcess_Exited;
+            Debug.WriteLine(
+                $"[Veyron] Browser launched: {localAddress}");
 
-            if (browserProcess.HasExited)
-                await StopLocalProxyAsync();
+            Debug.WriteLine(
+                $"[Veyron] Proxy running: {localProxyServer.IsRunning}");
         }
         catch (Exception ex)
         {
+            Debug.WriteLine($"[Veyron] Browser error: {ex}");
+
             await StopLocalProxyAsync();
 
             MessageBox.Show(
-                ex.Message,
+                ex.ToString(),
                 "Veyron Browser",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
     }
+
 
     private void OpenNetworkMonitor()
     {
@@ -1382,5 +1402,33 @@ public class MainForm : Form
 
         using var monitor = new NetworkMonitorForm(localProxyServer);
         monitor.ShowDialog(this);
+    }
+
+    private async Task WaitForLocalProxyAsync(int port)
+    {
+        Exception? lastError = null;
+
+        for (int i = 0; i < 20; i++)
+        {
+            try
+            {
+                using var client = new System.Net.Sockets.TcpClient();
+
+                await client.ConnectAsync(
+                    System.Net.IPAddress.Loopback,
+                    port);
+
+                return;
+            }
+            catch (System.Net.Sockets.SocketException ex)
+            {
+                lastError = ex;
+                await Task.Delay(100);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Local proxy 127.0.0.1:{port} is not accepting connections.",
+            lastError);
     }
 }
