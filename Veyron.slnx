@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Veyron.Client/Veyron.Client.csproj" />
+    <Project Path="src/Veyron.Core/Veyron.Core.csproj" />
+    <Project Path="src/Veyron.Infrastructure/Veyron.Infrastructure.csproj" />
+    <Project Path="src/Veyron.Network/Veyron.Network.csproj" />
+  </Folder>
+</Solution>
