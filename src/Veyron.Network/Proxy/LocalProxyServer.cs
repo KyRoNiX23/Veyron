@@ -80,6 +80,7 @@ public sealed class LocalProxyServer : IAsyncDisposable
 
         if (profile.Type is not (
             ConnectionType.HTTP or
+            ConnectionType.SOCKS4 or
             ConnectionType.SOCKS5))
         {
             throw new NotSupportedException(

@@ -1,0 +1,935 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<meta name="theme-color" content="#090810">
+					<meta name="description" content="Veyron — приложение для управления прокси-подключениями, профилями и маршрутизацией сетевого трафика.">
+						<title>Veyron — Take control of your connection</title>
+
+						<link rel="preconnect" href="https://fonts.googleapis.com">
+							<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+								<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+									<style>
+										:root {
+										--bg: #090810;
+										--surface: #11101b;
+										--surface2: #171525;
+										--purple: #9665ff;
+										--purple2: #7145dc;
+										--text: #f5f2ff;
+										--muted: #9994aa;
+										--border: rgba(255,255,255,.08);
+										}
+
+										* {
+										margin: 0;
+										padding: 0;
+										box-sizing: border-box;
+										}
+
+										html {
+										scroll-behavior: smooth;
+										}
+
+										body {
+										background: var(--bg);
+										color: var(--text);
+										font-family: 'DM Sans', sans-serif;
+										overflow-x: hidden;
+										}
+
+										a {
+										color: inherit;
+										text-decoration: none;
+										}
+
+										button {
+										font: inherit;
+										}
+
+										.container {
+										width: min(1160px, calc(100% - 48px));
+										margin: auto;
+										}
+
+										/* Background */
+
+										.background-glow {
+										position: absolute;
+										width: 650px;
+										height: 650px;
+										top: -260px;
+										left: 50%;
+										transform: translateX(-50%);
+										background: #7945ec;
+										filter: blur(180px);
+										opacity: .18;
+										pointer-events: none;
+										}
+
+										.grid-bg {
+										position: absolute;
+										inset: 0;
+										height: 850px;
+										opacity: .12;
+										pointer-events: none;
+										background-image:
+										linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px),
+										linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px);
+										background-size: 55px 55px;
+										mask-image: linear-gradient(to bottom, black, transparent);
+										}
+
+										/* Navigation */
+
+										header {
+										position: relative;
+										z-index: 10;
+										border-bottom: 1px solid var(--border);
+										}
+
+										nav {
+										height: 82px;
+										display: flex;
+										align-items: center;
+										justify-content: space-between;
+										}
+
+										.logo {
+										display: flex;
+										align-items: center;
+										gap: 11px;
+										font-family: 'Space Grotesk', sans-serif;
+										font-size: 25px;
+										font-weight: 700;
+										letter-spacing: -1px;
+										}
+
+										.logo-icon {
+										width: 36px;
+										height: 36px;
+										display: grid;
+										place-items: center;
+										border-radius: 11px;
+										color: white;
+										background: linear-gradient(135deg, #ad83ff, #6535d4);
+										box-shadow: 0 0 25px #8652ed55;
+										font-size: 21px;
+										}
+
+										.nav-links {
+										display: flex;
+										align-items: center;
+										gap: 34px;
+										color: var(--muted);
+										font-size: 14px;
+										}
+
+										.nav-links a:hover {
+										color: white;
+										}
+
+										.nav-button {
+										padding: 11px 19px;
+										background: #ffffff0b;
+										border: 1px solid var(--border);
+										border-radius: 9px;
+										font-size: 13px;
+										transition: .2s;
+										}
+
+										.nav-button:hover {
+										background: #9665ff22;
+										border-color: var(--purple);
+										}
+
+										/* Hero */
+
+										.hero {
+										position: relative;
+										z-index: 1;
+										padding: 115px 0 90px;
+										text-align: center;
+										}
+
+										.status {
+										display: inline-flex;
+										align-items: center;
+										gap: 9px;
+										padding: 8px 14px;
+										border: 1px solid #9665ff45;
+										background: #9665ff12;
+										border-radius: 50px;
+										color: #c4aaff;
+										font-size: 12px;
+										margin-bottom: 28px;
+										}
+
+										.status-dot {
+										width: 7px;
+										height: 7px;
+										border-radius: 50%;
+										background: #a77aff;
+										box-shadow: 0 0 12px #a77aff;
+										}
+
+										h1 {
+										font-family: 'Space Grotesk', sans-serif;
+										font-size: clamp(48px, 8vw, 88px);
+										line-height: 1.04;
+										letter-spacing: -5px;
+										font-weight: 700;
+										max-width: 900px;
+										margin: auto;
+										}
+
+										.gradient-text {
+										background: linear-gradient(100deg, #c4a8ff, #8653f5 55%, #d5baff);
+										-webkit-background-clip: text;
+										background-clip: text;
+										color: transparent;
+										}
+
+										.hero-description {
+										max-width: 610px;
+										margin: 26px auto 34px;
+										color: var(--muted);
+										font-size: 17px;
+										line-height: 1.8;
+										}
+
+										.hero-actions {
+										display: flex;
+										justify-content: center;
+										flex-wrap: wrap;
+										gap: 13px;
+										}
+
+										.button {
+										display: inline-flex;
+										align-items: center;
+										justify-content: center;
+										gap: 10px;
+										padding: 15px 24px;
+										border-radius: 10px;
+										font-size: 14px;
+										font-weight: 600;
+										transition: .2s;
+										cursor: pointer;
+										}
+
+										.button-primary {
+										background: linear-gradient(135deg, #a27aff, #7041dc);
+										color: white;
+										box-shadow: 0 8px 35px #7945ec40;
+										}
+
+										.button-primary:hover {
+										transform: translateY(-3px);
+										box-shadow: 0 12px 40px #7945ec70;
+										}
+
+										.button-secondary {
+										background: #ffffff09;
+										border: 1px solid var(--border);
+										}
+
+										.button-secondary:hover {
+										background: #ffffff15;
+										transform: translateY(-3px);
+										}
+
+										/* App preview */
+
+										.preview-section {
+										position: relative;
+										z-index: 2;
+										padding-bottom: 110px;
+										}
+
+										.app-window {
+										max-width: 900px;
+										margin: auto;
+										background: #100f19;
+										border: 1px solid #ffffff19;
+										border-radius: 17px;
+										overflow: hidden;
+										box-shadow: 0 35px 100px #00000090, 0 0 80px #8652ed16;
+										transform: perspective(1200px) rotateX(2deg);
+										}
+
+										.window-bar {
+										height: 43px;
+										display: flex;
+										align-items: center;
+										gap: 7px;
+										padding: 0 17px;
+										background: #171522;
+										border-bottom: 1px solid var(--border);
+										}
+
+										.window-circle {
+										width: 9px;
+										height: 9px;
+										border-radius: 50%;
+										background: #625d70;
+										}
+
+										.window-title {
+										margin: auto;
+										margin-left: 37%;
+										color: #817b91;
+										font-size: 11px;
+										}
+
+										.app-content {
+										display: grid;
+										grid-template-columns: 190px 1fr;
+										min-height: 350px;
+										}
+
+										.sidebar {
+										padding: 22px 13px;
+										border-right: 1px solid var(--border);
+										}
+
+										.sidebar-logo {
+										font-family: 'Space Grotesk', sans-serif;
+										font-weight: 700;
+										font-size: 17px;
+										padding: 0 10px 24px;
+										}
+
+										.sidebar-item {
+										padding: 11px 12px;
+										color: #9690a6;
+										font-size: 12px;
+										border-radius: 7px;
+										margin-bottom: 5px;
+										}
+
+										.sidebar-item.active {
+										background: #9665ff20;
+										color: #c5aaff;
+										}
+
+										.dashboard {
+										padding: 27px;
+										}
+
+										.dashboard-header {
+										display: flex;
+										justify-content: space-between;
+										align-items: center;
+										margin-bottom: 25px;
+										}
+
+										.dashboard-header h3 {
+										font-size: 17px;
+										}
+
+										.connected {
+										color: #8be5b1;
+										font-size: 11px;
+										background: #48d68c13;
+										padding: 7px 11px;
+										border-radius: 20px;
+										}
+
+										.connection-card {
+										padding: 23px;
+										border: 1px solid #9665ff35;
+										background: linear-gradient(130deg, #211738, #151321);
+										border-radius: 12px;
+										}
+
+										.connection-label {
+										color: #a49ab8;
+										font-size: 11px;
+										margin-bottom: 9px;
+										}
+
+										.connection-name {
+										font-size: 21px;
+										font-weight: 700;
+										margin-bottom: 20px;
+										}
+
+										.connection-details {
+										display: flex;
+										gap: 30px;
+										flex-wrap: wrap;
+										}
+
+										.detail small {
+										display: block;
+										color: #928ba3;
+										font-size: 10px;
+										margin-bottom: 5px;
+										}
+
+										.detail strong {
+										font-size: 12px;
+										}
+
+										.dashboard-bottom {
+										display: grid;
+										grid-template-columns: 1fr 1fr;
+										gap: 12px;
+										margin-top: 14px;
+										}
+
+										.mini-card {
+										padding: 17px;
+										border: 1px solid var(--border);
+										border-radius: 10px;
+										background: #ffffff05;
+										}
+
+										.mini-card span {
+										display: block;
+										color: #928ba3;
+										font-size: 10px;
+										margin-bottom: 8px;
+										}
+
+										.mini-card strong {
+										font-size: 17px;
+										}
+
+										/* Features */
+
+										section {
+										position: relative;
+										}
+
+										.section-heading {
+										text-align: center;
+										margin-bottom: 48px;
+										}
+
+										.eyebrow {
+										color: #aa85ff;
+										font-size: 12px;
+										font-weight: 700;
+										letter-spacing: 2px;
+										text-transform: uppercase;
+										margin-bottom: 15px;
+										}
+
+										h2 {
+										font-family: 'Space Grotesk', sans-serif;
+										font-size: clamp(32px, 5vw, 48px);
+										letter-spacing: -2px;
+										}
+
+										.section-description {
+										max-width: 540px;
+										margin: 15px auto 0;
+										color: var(--muted);
+										font-size: 14px;
+										line-height: 1.8;
+										}
+
+										.features {
+										padding: 30px 0 115px;
+										}
+
+										.feature-grid {
+										display: grid;
+										grid-template-columns: repeat(3, 1fr);
+										gap: 16px;
+										}
+
+										.feature-card {
+										padding: 27px;
+										border: 1px solid var(--border);
+										background: linear-gradient(145deg, #151321, #100f18);
+										border-radius: 13px;
+										transition: .25s;
+										}
+
+										.feature-card:hover {
+										transform: translateY(-5px);
+										border-color: #9665ff65;
+										background: #191528;
+										}
+
+										.feature-icon {
+										width: 44px;
+										height: 44px;
+										display: grid;
+										place-items: center;
+										border-radius: 11px;
+										background: #9665ff18;
+										color: #b99aff;
+										font-size: 21px;
+										margin-bottom: 23px;
+										}
+
+										.feature-card h3 {
+										font-size: 16px;
+										margin-bottom: 11px;
+										}
+
+										.feature-card p {
+										color: var(--muted);
+										font-size: 13px;
+										line-height: 1.8;
+										}
+
+										/* Protocols */
+
+										.protocols {
+										padding: 0 0 115px;
+										}
+
+										.protocol-list {
+										display: flex;
+										justify-content: center;
+										flex-wrap: wrap;
+										gap: 12px;
+										}
+
+										.protocol {
+										padding: 13px 22px;
+										border: 1px solid var(--border);
+										background: #ffffff06;
+										border-radius: 9px;
+										color: #d4cde4;
+										font-size: 13px;
+										}
+
+										/* CTA */
+
+										.cta {
+										padding: 65px 25px;
+										text-align: center;
+										border: 1px solid #9665ff40;
+										border-radius: 17px;
+										background:
+										radial-gradient(ellipse at 50% 120%, #7945ec45, transparent 65%),
+										#151222;
+										margin-bottom: 100px;
+										}
+
+										.cta h2 {
+										font-size: clamp(30px, 5vw, 44px);
+										}
+
+										.cta p {
+										color: var(--muted);
+										margin: 17px auto 27px;
+										max-width: 480px;
+										font-size: 14px;
+										line-height: 1.8;
+										}
+
+										/* Footer */
+
+										footer {
+										border-top: 1px solid var(--border);
+										padding: 30px 0;
+										}
+
+										.footer-content {
+										display: flex;
+										align-items: center;
+										justify-content: space-between;
+										gap: 20px;
+										flex-wrap: wrap;
+										}
+
+										.footer-copy {
+										color: #777184;
+										font-size: 12px;
+										}
+
+										.footer-links {
+										display: flex;
+										gap: 23px;
+										color: #9992aa;
+										font-size: 12px;
+										}
+
+										.footer-links a:hover {
+										color: white;
+										}
+
+										/* Animation */
+
+										.reveal {
+										opacity: 0;
+										transform: translateY(25px);
+										transition: .7s ease;
+										}
+
+										.reveal.visible {
+										opacity: 1;
+										transform: translateY(0);
+										}
+
+										@media (max-width: 750px) {
+										.nav-links {
+										gap: 15px;
+										}
+
+										.nav-links a:not(.nav-button) {
+										display: none;
+										}
+
+										.hero {
+										padding: 85px 0 65px;
+										}
+
+										h1 {
+										letter-spacing: -3px;
+										}
+
+										.hero-description {
+										font-size: 15px;
+										}
+
+										.app-content {
+										grid-template-columns: 1fr;
+										}
+
+										.sidebar {
+										display: none;
+										}
+
+										.window-title {
+										margin-left: 25%;
+										}
+
+										.feature-grid {
+										grid-template-columns: repeat(2, 1fr);
+										}
+
+										.dashboard {
+										padding: 17px;
+										}
+										}
+
+										@media (max-width: 480px) {
+										.container {
+										width: calc(100% - 32px);
+										}
+
+										.feature-grid {
+										grid-template-columns: 1fr;
+										}
+
+										.dashboard-bottom {
+										grid-template-columns: 1fr 1fr;
+										}
+
+										.connection-details {
+										gap: 15px;
+										}
+
+										.footer-content {
+										justify-content: center;
+										text-align: center;
+										}
+
+										.footer-links {
+										justify-content: center;
+										}
+										}
+									</style>
+								</head>
+
+	<body>
+
+		<div class="background-glow"></div>
+		<div class="grid-bg"></div>
+
+		<header>
+			<div class="container">
+				<nav>
+					<a href="#" class="logo">
+						<span class="logo-icon">V</span>
+						Veyron
+					</a>
+
+					<div class="nav-links">
+						<a href="#features">Возможности</a>
+						<a href="#protocols">Протоколы</a>
+						<a href="#about">О проекте</a>
+						<a class="nav-button" href="https://github.com/" target="_blank" rel="noopener">GitHub ↗</a>
+					</div>
+				</nav>
+			</div>
+		</header>
+
+		<main>
+
+			<section class="hero">
+				<div class="container">
+
+					<div class="status">
+						<span class="status-dot"></span>
+						NETWORK MANAGEMENT PLATFORM
+					</div>
+
+					<h1>
+						Your connection.<br>
+							<span class="gradient-text">Your control.</span>
+						</h1>
+
+					<p class="hero-description">
+						Veyron — приложение для управления сетевыми подключениями.
+						Импортируйте прокси, создавайте профили и настраивайте
+						маршрутизацию трафика в одном месте.
+					</p>
+
+					<div class="hero-actions">
+						<a href="https://github.com/" target="_blank" rel="noopener"
+						   class="button button-primary">
+							↗ Посмотреть на GitHub
+						</a>
+
+						<a href="#features" class="button button-secondary">
+							Узнать больше ↓
+						</a>
+					</div>
+
+				</div>
+			</section>
+
+			<section class="preview-section">
+				<div class="container">
+
+					<div class="app-window reveal">
+
+						<div class="window-bar">
+							<span class="window-circle"></span>
+							<span class="window-circle"></span>
+							<span class="window-circle"></span>
+							<span class="window-title">Veyron Client</span>
+						</div>
+
+						<div class="app-content">
+
+							<aside class="sidebar">
+								<div class="sidebar-logo">Veyron.</div>
+								<div class="sidebar-item active">◈ Dashboard</div>
+								<div class="sidebar-item">◎ Connections</div>
+								<div class="sidebar-item">⇄ Traffic routing</div>
+								<div class="sidebar-item">⌁ Network monitor</div>
+								<div class="sidebar-item">⚙ Settings</div>
+							</aside>
+
+							<div class="dashboard">
+
+								<div class="dashboard-header">
+									<h3>Dashboard</h3>
+									<span class="connected">● Connected</span>
+								</div>
+
+								<div class="connection-card">
+									<div class="connection-label">ACTIVE CONNECTION</div>
+									<div class="connection-name">Main Proxy Profile</div>
+
+									<div class="connection-details">
+										<div class="detail">
+											<small>PROTOCOL</small>
+											<strong>SOCKS5</strong>
+										</div>
+
+										<div class="detail">
+											<small>SERVER</small>
+											<strong>Example Server</strong>
+										</div>
+
+										<div class="detail">
+											<small>STATUS</small>
+											<strong style="color:#8be5b1">Active</strong>
+										</div>
+									</div>
+								</div>
+
+								<div class="dashboard-bottom">
+									<div class="mini-card">
+										<span>↓ RECEIVED</span>
+										<strong>128.4 MB</strong>
+									</div>
+
+									<div class="mini-card">
+										<span>↑ SENT</span>
+										<strong>24.8 MB</strong>
+									</div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+
+				</div>
+			</section>
+
+			<section class="features" id="features">
+				<div class="container">
+
+					<div class="section-heading reveal">
+						<div class="eyebrow">Capabilities</div>
+						<h2>Всё под контролем</h2>
+						<p class="section-description">
+							Инструменты для удобной работы с подключениями,
+							профилями и сетевым трафиком.
+						</p>
+					</div>
+
+					<div class="feature-grid">
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">◈</div>
+							<h3>Управление профилями</h3>
+							<p>
+								Импортируйте и храните подключения в единой
+								библиотеке. Управляйте профилями из одного интерфейса.
+							</p>
+						</article>
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">⇄</div>
+							<h3>Гибкая маршрутизация</h3>
+							<p>
+								Настраивайте правила обработки трафика:
+								через прокси, напрямую или блокировать соединение.
+							</p>
+						</article>
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">⌁</div>
+							<h3>Мониторинг сети</h3>
+							<p>
+								Отслеживайте активные соединения, объём переданных
+								данных и состояние локального прокси.
+							</p>
+						</article>
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">⚡</div>
+							<h3>Проверка подключений</h3>
+							<p>
+								Проверяйте доступность серверов и диагностируйте
+								проблемы сетевого соединения.
+							</p>
+						</article>
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">◎</div>
+							<h3>Интеграция с браузером</h3>
+							<p>
+								Запускайте браузер с выбранным профилем
+								через локальный прокси.
+							</p>
+						</article>
+
+						<article class="feature-card reveal">
+							<div class="feature-icon">⚙</div>
+							<h3>Единый интерфейс</h3>
+							<p>
+								Управляйте сетевыми настройками через
+								удобное настольное приложение Windows.
+							</p>
+						</article>
+
+					</div>
+				</div>
+			</section>
+
+			<section class="protocols" id="protocols">
+				<div class="container">
+
+					<div class="section-heading reveal">
+						<div class="eyebrow">Compatibility</div>
+						<h2>Поддерживаемые технологии</h2>
+						<p class="section-description">
+							Поддержка зависит от реализации конкретного провайдера
+							и версии приложения.
+						</p>
+					</div>
+
+					<div class="protocol-list reveal">
+						<div class="protocol">HTTP Proxy</div>
+						<div class="protocol">SOCKS5</div>
+						<div class="protocol">SOCKS4</div>
+						<div class="protocol">WireGuard</div>
+						<div class="protocol">OpenVPN</div>
+					</div>
+
+				</div>
+			</section>
+
+			<section id="about">
+				<div class="container">
+
+					<div class="cta reveal">
+						<div class="eyebrow">Discover Veyron</div>
+
+						<h2>Take control of your network.</h2>
+
+						<p>
+							Изучите проект, следите за разработкой
+							и присоединяйтесь к развитию Veyron.
+						</p>
+
+						<a href="https://github.com/" target="_blank" rel="noopener"
+						   class="button button-primary">
+							Открыть репозиторий ↗
+						</a>
+					</div>
+
+				</div>
+			</section>
+
+		</main>
+
+		<footer>
+			<div class="container">
+				<div class="footer-content">
+
+					<a href="#" class="logo">
+						<span class="logo-icon">V</span>
+						Veyron
+					</a>
+
+					<div class="footer-copy">
+						© <span id="year"></span> Veyron Project. Released under MIT License.
+					</div>
+
+					<div class="footer-links">
+						<a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+						<a href="LICENSE">License</a>
+					</div>
+
+				</div>
+			</div>
+		</footer>
+
+		<script>
+			document.getElementById("year").textContent = new Date().getFullYear();
+
+			const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+			if (entry.isIntersecting) {
+			entry.target.classList.add("visible");
+			observer.unobserve(entry.target);
+			}
+			});
+			}, {
+			threshold: 0.12
+			});
+
+			document.querySelectorAll(".reveal").forEach(element => {
+			observer.observe(element);
+			});
+		</script>
+
+	</body>
+</html>

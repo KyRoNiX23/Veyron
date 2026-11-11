@@ -5,4 +5,7 @@
     <Project Path="src/Veyron.Infrastructure/Veyron.Infrastructure.csproj" />
     <Project Path="src/Veyron.Network/Veyron.Network.csproj" />
   </Folder>
+  <Folder Name="/Элементы решения/">
+    <File Path="index.html" />
+  </Folder>
 </Solution>
